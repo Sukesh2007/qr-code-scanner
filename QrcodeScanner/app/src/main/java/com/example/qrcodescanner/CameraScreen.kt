@@ -1,8 +1,8 @@
 package com.example.qrcodescanner
 
 import android.Manifest
+import android.content.Context
 import android.content.pm.PackageManager
-import android.util.Size
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.camera.core.CameraSelector
@@ -36,18 +36,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 @Composable
-fun CameraScreen(entry: PaddingValues) {
-//    Surface(modifier = Modifier.padding(entry).fillMaxSize()) {
-//        Text(
-//            text = "Camera Screen",
-//            color = Color.Black,
-//            fontSize = 25.sp,
-//            fontWeight = FontWeight.Bold
-//       )
-//    }
+fun CameraScreen(entry: PaddingValues, onIncrease: (content: String)->Unit) {
     var code by remember {
         mutableStateOf("")
     }
+
     var isScanned by remember { mutableStateOf(false) }
     val context = LocalContext.current
     val cameraProviderFuture = remember {
@@ -76,13 +69,15 @@ fun CameraScreen(entry: PaddingValues) {
             if(Networking.checkHtml(code)){
                 withContext(Dispatchers.IO){
                     val response = Networking.clientCall(code, context)
-                    if(response is String) code = response
-                    else if(response is Map<*, *>){
-                        code = "Json: \n"
-                        for((key, value) in response){
-                            code += "$key: $value"
-                            code += "\n"
+                    try {
+                        if(response is String) code = response
+                        else if (response is Map<*, *>) {
+                            code = mapToText(response)
                         }
+                    }catch(e: Exception){
+                        code = "Error in Camera Screen"
+                        e.printStackTrace()
+                        println(e.message)
                     }
                 }
             }
@@ -107,7 +102,10 @@ fun CameraScreen(entry: PaddingValues) {
                     QrCodeAnalyzer {result ->
                         if(!isScanned) {
                             code = result
-                            isScanned = true
+                            if(code.isNotBlank()) {
+                                onIncrease(code)
+                                isScanned = true
+                            }
                         }
                     }
                 )
@@ -134,4 +132,18 @@ fun CameraScreen(entry: PaddingValues) {
             )
         }
     }
+}
+
+fun mapToText(map: Map<*, *>, indent: String = "   "): String {
+    val sb = StringBuilder()
+
+    for ((key, value) in map) {
+        if (value is Map<*, *>) {
+            sb.append("$indent$key:\n")
+            sb.append(mapToText(value, "$indent  "))
+        } else {
+            sb.append("$indent$key: $value\n")
+        }
+    }
+    return sb.toString()
 }

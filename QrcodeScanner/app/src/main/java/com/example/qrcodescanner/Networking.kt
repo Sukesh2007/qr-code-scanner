@@ -2,27 +2,26 @@ package com.example.qrcodescanner
 
 import android.content.Context
 import android.content.Intent
+import android.util.Log
 import androidx.core.net.toUri
 import io.ktor.client.HttpClient
-import io.ktor.client.call.body
 import io.ktor.client.engine.okhttp.OkHttp
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
-import io.ktor.http.HttpHeaders
 import io.ktor.http.contentType
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonElement
 
 
 object Networking{
     private val client: HttpClient = HttpClient(OkHttp){
         install(ContentNegotiation){
-            json(
-                contentType = ContentType("text", "plain")
-            )
+            json()
         }
     }
 
@@ -40,26 +39,40 @@ object Networking{
 
         val contentType = response.contentType()?.withoutParameters()
 
-        return when (contentType) {
-            ContentType.Text.Plain -> {
-                response.bodyAsText()
-            }
-
-            ContentType.Application.Json -> {
-                response.body<Map<String, Any>>()
-            }
-
-            ContentType.Text.Html -> {
-                val intent = Intent(Intent.ACTION_VIEW, link.toUri())
-                withContext(Dispatchers.Main) {
-                    context.startActivity(intent)
+        try {
+            return when (contentType) {
+                ContentType.Text.Plain -> {
+                    response.bodyAsText()
                 }
-                "Opened in browser"
-            }
 
-            else -> {
-                "Unsupported Content-Type: $contentType"
+                ContentType.Application.Json -> {
+                    val give = response.bodyAsText()
+                    val formatted = Json {
+                        prettyPrint = true
+                    }.encodeToString(
+                        JsonElement.serializer(),
+                        Json.parseToJsonElement(give)
+                    )
+                    formatted
+                }
+
+                ContentType.Text.Html -> {
+                    val intent = Intent(Intent.ACTION_VIEW, link.toUri())
+                    withContext(Dispatchers.Main) {
+                        context.startActivity(intent)
+                    }
+                    link
+                }
+
+                else -> {
+                    "Unsupported Content-Type: $contentType"
+                }
             }
+        }catch(e: Exception){
+            e.printStackTrace()
+            Log.d("Networking", e.message.toString())
+            println("The mistake is in Networking.kt file")
+            return "Error in Networking.kt"
         }
     }
 
