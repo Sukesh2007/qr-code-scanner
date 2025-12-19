@@ -1,7 +1,6 @@
 package com.example.qrcodescanner
 
 import android.Manifest
-import android.content.Context
 import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -40,7 +39,7 @@ fun CameraScreen(entry: PaddingValues, onIncrease: (content: String)->Unit) {
     var code by remember {
         mutableStateOf("")
     }
-
+    var finalText by remember {mutableStateOf("")}
     var isScanned by remember { mutableStateOf(false) }
     val context = LocalContext.current
     val cameraProviderFuture = remember {
@@ -70,10 +69,11 @@ fun CameraScreen(entry: PaddingValues, onIncrease: (content: String)->Unit) {
                 withContext(Dispatchers.IO){
                     val response = Networking.clientCall(code, context)
                     try {
-                        if(response is String) code = response
+                        if(response is String) finalText = response
                         else if (response is Map<*, *>) {
                             code = mapToText(response)
                         }
+
                     }catch(e: Exception){
                         code = "Error in Camera Screen"
                         e.printStackTrace()
@@ -81,6 +81,9 @@ fun CameraScreen(entry: PaddingValues, onIncrease: (content: String)->Unit) {
                     }
                 }
             }
+            finalText = code
+            onIncrease(finalText)
+            isScanned = false
         }
     }
     Column(
@@ -102,10 +105,7 @@ fun CameraScreen(entry: PaddingValues, onIncrease: (content: String)->Unit) {
                     QrCodeAnalyzer {result ->
                         if(!isScanned) {
                             code = result
-                            if(code.isNotBlank()) {
-                                onIncrease(code)
-                                isScanned = true
-                            }
+                            isScanned = true
                         }
                     }
                 )
