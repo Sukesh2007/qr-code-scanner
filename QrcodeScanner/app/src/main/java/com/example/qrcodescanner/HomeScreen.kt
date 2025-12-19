@@ -74,7 +74,7 @@ fun HomeScreen(
 
 @Composable
 fun TopBar(){
-    Row(modifier = Modifier.fillMaxWidth().background(Color.Black)){
+    Row(modifier = Modifier.fillMaxWidth().background(Color.Black).padding(vertical = 20.dp)){
         Text(
             text = "QR Code Scanner",
             color =Color.White,
